@@ -3,266 +3,284 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>The Reveal · Language Services</title>
+<title>The Reveal · Language Services · Friday, May 1</title>
 <style>
   :root {
-    --bg1: #fdf6f0; --bg2: #fef0e8; --bg3: #fce8e4; --bg4: #f3e8f4; --bg5: #e8f0e8;
-    --card: rgba(255,255,255,0.78);
-    --cardSolid: #ffffff;
-    --border: rgba(210,160,140,0.28);
+    --bg: #fbf7f3;
+    --card: #ffffff;
+    --border: #ecd9c9;
     --text: #2a1f1a;
     --muted: #6b5a52;
-    --light: #9a8880;
-    --accent: #8b3a4a;
+    --accent: #8a3550;
     --accentBg: #fbeaf1;
-    --accentBorder: #f0c9d8;
     --coral: #d4489f;
     --lavender: #9b7bc7;
     --mint: #5fb8a8;
     --gold: #d4a850;
     --peach: #e89a7e;
-    --rose: #d86fa1;
-    --green: #5fb85f;
-    --input: #faf5ef;
-    --inputBorder: #e7d1c3;
+    --envelope: #f5e0c8;
+    --envelope-shadow: #d9b88e;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; background: linear-gradient(180deg, #fdf6f0 0%, #fef0e8 20%, #fce8e4 40%, #f3e8f4 60%, #e8f0e8 80%, #fdf6f0 100%); min-height: 100vh; }
-  .page { max-width: 780px; margin: 0 auto; padding: 48px 20px 80px; position: relative; }
-  .topbar { text-align: center; margin-bottom: 32px; }
-  .topbar .kicker { font-size: 11px; font-weight: 800; color: var(--accent); letter-spacing: 2.5px; text-transform: uppercase; margin: 0 0 4px; }
-  .topbar .brand { font-size: 14px; font-weight: 700; color: var(--muted); margin: 0; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+  .page { min-height: 100vh; padding: 50px 20px; position: relative; overflow: hidden; }
+  .bg-orb { position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.32; pointer-events: none; }
+  .orb1 { width: 460px; height: 460px; background: var(--coral); top: -120px; left: -120px; }
+  .orb2 { width: 420px; height: 420px; background: var(--lavender); top: -80px; right: -100px; }
+  .orb3 { width: 380px; height: 380px; background: var(--gold); bottom: -100px; left: 30%; opacity: 0.22; }
+  .confetti-bg { position: absolute; width: 10px; height: 10px; border-radius: 2px; opacity: 0.9; animation: float 6s ease-in-out infinite; }
+  @keyframes float { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-20px) rotate(180deg); } }
+  .wrap { position: relative; z-index: 2; max-width: 760px; margin: 0 auto; }
 
-  /* ── LOCK SCREEN ── */
-  .lock { background: var(--card); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: 26px; padding: 56px 44px; text-align: center; box-shadow: 0 30px 80px rgba(138, 58, 74, 0.08); }
-  .lock .icon-wrap { width: 88px; height: 88px; border-radius: 50%; background: var(--accentBg); border: 2px solid var(--accentBorder); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 24px; }
-  .lock .icon-wrap svg { width: 38px; height: 38px; }
-  .lock h1 { font-size: 28px; font-weight: 800; margin: 0 0 10px; letter-spacing: -0.6px; }
-  .lock .lead { font-size: 14px; color: var(--muted); margin: 0 0 20px; line-height: 1.6; }
-  .hint-card { background: var(--accentBg); border: 1px solid var(--accentBorder); border-radius: 14px; padding: 16px 18px; margin: 0 auto 26px; max-width: 460px; text-align: left; }
-  .hint-card .hint-label { font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; margin: 0 0 6px; }
-  .hint-card .hint-text { font-size: 13px; color: var(--text); margin: 0; font-style: italic; line-height: 1.6; }
-  .lock .input-row { display: flex; gap: 8px; max-width: 360px; margin: 0 auto; }
-  .lock input { flex: 1; background: var(--input); border: 1px solid var(--inputBorder); border-radius: 12px; padding: 14px 16px; font-size: 15px; color: var(--text); outline: none; }
-  .lock input:focus { border-color: var(--accent); }
-  .lock button { padding: 14px 26px; border: none; border-radius: 12px; background: var(--accent); color: white; font-size: 14px; font-weight: 800; cursor: pointer; }
-  .lock button:hover { background: #6b2a3a; }
-  .lock .err { color: var(--coral); font-size: 13px; font-weight: 600; margin: 12px 0 0; min-height: 18px; }
+  /* ─── Lock screen (envelope intro) ─── */
+  .header { text-align: center; margin-bottom: 32px; }
+  .date-badge { display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: white; border-radius: 999px; padding: 10px 22px; font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 18px; box-shadow: 0 12px 30px rgba(138, 53, 80, 0.3); }
+  .header h1 { font-size: 54px; font-weight: 900; letter-spacing: -1.8px; line-height: 1.02; margin: 0 0 10px; background: linear-gradient(90deg, var(--coral), var(--accent), var(--lavender)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .header p { font-size: 16px; color: var(--muted); margin: 0; line-height: 1.6; }
 
-  /* ── REVEAL SCREEN ── */
-  .reveal { position: relative; text-align: center; padding: 20px 0; }
-  .fw-layer { position: absolute; inset: 0; pointer-events: none; overflow: visible; z-index: 0; }
-  .fw { position: absolute; width: 0; height: 0; }
-  .fw .spark { position: absolute; width: 6px; height: 6px; border-radius: 50%; animation: burst 1.8s ease-out infinite; }
-  @keyframes burst {
-    0% { transform: translate(0,0) scale(0); opacity: 1; }
-    60% { opacity: 1; }
-    100% { transform: translate(var(--tx), var(--ty)) scale(1); opacity: 0; }
-  }
-  .confetti-row { position: relative; height: 40px; margin-bottom: 14px; z-index: 1; }
-  .confetti-dot { position: absolute; width: 10px; height: 10px; }
-  @keyframes cf1 { 0% { transform: translateY(0) rotate(0); opacity: 1; } 100% { transform: translateY(-60px) rotate(360deg); opacity: 0; } }
-  @keyframes cf2 { 0% { transform: translateY(0) rotate(0); opacity: 1; } 100% { transform: translateY(-80px) rotate(-360deg); opacity: 0; } }
+  .envelope-wrap { perspective: 1200px; margin: 0 auto 36px; width: 100%; max-width: 520px; animation: gentle 5s ease-in-out infinite; }
+  @keyframes gentle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+  .envelope { position: relative; aspect-ratio: 1.7 / 1; background: var(--envelope); border-radius: 14px; box-shadow: 0 30px 60px rgba(138, 53, 80, 0.22), inset 0 -4px 0 rgba(217, 184, 142, 0.6); overflow: hidden; }
+  .envelope .flap-top { position: absolute; top: 0; left: 0; right: 0; height: 50%; background: linear-gradient(180deg, #f1d5b5 0%, var(--envelope) 100%); clip-path: polygon(0 0, 100% 0, 50% 100%); }
+  .envelope .flap-left { position: absolute; top: 0; bottom: 0; left: 0; width: 50%; clip-path: polygon(0 0, 100% 50%, 0 100%); background: linear-gradient(90deg, #ead1b0 0%, var(--envelope) 100%); }
+  .envelope .flap-right { position: absolute; top: 0; bottom: 0; right: 0; width: 50%; clip-path: polygon(100% 0, 0 50%, 100% 100%); background: linear-gradient(-90deg, #ead1b0 0%, var(--envelope) 100%); }
+  .envelope .seal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 92px; height: 92px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #c94974 0%, var(--accent) 60%, #5e223a 100%); box-shadow: 0 10px 24px rgba(138, 53, 80, 0.45), inset 0 -6px 12px rgba(0,0,0,0.2), inset 0 4px 10px rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; color: #fbe7ef; font-family: Georgia, serif; font-size: 40px; font-weight: 900; font-style: italic; z-index: 3; letter-spacing: -2px; }
 
-  .stage { position: relative; z-index: 2; }
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-  @keyframes bigReveal { 0% { opacity: 0; transform: scale(0.3) rotate(-5deg); } 60% { opacity: 1; transform: scale(1.15) rotate(2deg); } 100% { opacity: 1; transform: scale(1) rotate(0); } }
-  @keyframes shimmer { 0%, 100% { background-position: -200% center; } 50% { background-position: 200% center; } }
-  @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 20px rgba(212, 132, 159, 0.4); } 50% { box-shadow: 0 0 40px rgba(212, 132, 159, 0.8), 0 0 60px rgba(212, 132, 159, 0.4); } }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 28px; padding: 44px 44px; box-shadow: 0 30px 80px rgba(138, 53, 80, 0.1), 0 8px 24px rgba(138, 53, 80, 0.05); }
+  .card h2 { font-size: 22px; font-weight: 800; margin: 0 0 20px; letter-spacing: -0.4px; }
 
-  .intro { animation: fadeUp 0.8s ease-out; }
-  .intro .eyebrow { font-size: 13px; font-weight: 800; color: var(--gold); text-transform: uppercase; letter-spacing: 3px; margin: 0 0 8px; }
-  .intro .lead { font-size: 15px; color: var(--muted); margin: 0 0 28px; }
+  .pw-form { display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px; }
+  .pw-form label { font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; }
+  .pw-form input { padding: 16px 18px; font-size: 18px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; border: 2px solid var(--border); border-radius: 14px; background: #fbf6f1; font-family: inherit; text-align: center; }
+  .pw-form input:focus { outline: none; border-color: var(--accent); background: white; }
+  .pw-form button { background: var(--accent); color: white; border: none; font-weight: 800; font-size: 15px; padding: 16px 32px; border-radius: 14px; cursor: pointer; letter-spacing: 0.5px; box-shadow: 0 16px 36px rgba(138, 53, 80, 0.35); transition: transform 0.2s; font-family: inherit; }
+  .pw-form button:hover { transform: translateY(-2px); }
+  .pw-error { color: #c62828; font-size: 13px; text-align: center; min-height: 18px; margin: 0; font-weight: 600; }
 
-  .submitter-card { background: var(--cardSolid); border: 2px solid var(--accentBorder); border-radius: 22px; padding: 26px 28px; max-width: 520px; margin: 0 auto 28px; animation: fadeUp 0.9s ease-out 0.8s both, pulseGlow 3s ease-in-out 2s infinite; }
-  .submitter-card .tag { font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin: 0 0 10px; }
-  .submitter-card .name { font-size: 30px; font-weight: 800; margin: 0 0 4px; letter-spacing: -0.6px; }
-  .submitter-card .dept { font-size: 14px; color: var(--muted); margin: 0; font-weight: 500; }
+  .hint-card { background: linear-gradient(135deg, #fff8ee 0%, #fbeaf1 100%); border: 1px dashed #e8c3b0; border-radius: 18px; padding: 22px 24px; margin: 0 0 8px; }
+  .hint-card .hint-label { font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin: 0 0 8px; }
+  .hint-card .hint-text { font-family: Georgia, serif; font-style: italic; font-size: 16px; line-height: 1.55; color: var(--text); margin: 0; }
 
-  .detail-card { background: var(--cardSolid); border: 1px solid var(--border); border-radius: 18px; padding: 22px 26px; max-width: 620px; margin: 0 auto 20px; text-align: left; }
-  .detail-card.rationale { animation: fadeUp 0.9s ease-out 1.8s both; }
-  .detail-card.unifies { animation: fadeUp 0.9s ease-out 2.8s both; }
-  .detail-card .tag { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 10px; }
-  .detail-card.rationale .tag { color: var(--coral); }
-  .detail-card.unifies .tag { color: var(--lavender); }
-  .detail-card .body { font-size: 14px; color: var(--text); line-height: 1.75; margin: 0; }
+  /* ─── Reveal screen ─── */
+  #revealScreen { display: none; }
+  .reveal-stage { opacity: 0; transform: translateY(20px); animation: fadeUp 0.9s ease-out forwards; }
+  @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+  .stage-1 { animation-delay: 0.2s; }
+  .stage-2 { animation-delay: 2.2s; }
+  .stage-3 { animation-delay: 4.0s; }
+  .stage-4 { animation-delay: 5.8s; }
+  .stage-5 { animation-delay: 8.2s; }
+  .stage-6 { animation-delay: 9.4s; }
 
-  .big-label { font-size: 14px; font-weight: 800; color: var(--gold); text-transform: uppercase; letter-spacing: 4px; margin: 36px 0 18px; animation: fadeUp 0.8s ease-out 3.8s both; }
-  .big-name { font-size: clamp(48px, 10vw, 96px); font-weight: 900; letter-spacing: -3px; line-height: 1; background: linear-gradient(90deg, var(--coral), var(--accent), var(--lavender), var(--gold), var(--coral)); background-size: 400% auto; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; margin: 0 0 36px; padding: 18px 0; animation: shimmer 4s linear infinite, bigReveal 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) 4.3s both; }
+  .eyebrow { display: inline-block; background: var(--accentBg); color: var(--accent); padding: 8px 18px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; }
 
-  .thanks { background: var(--cardSolid); border: 1px solid var(--border); border-radius: 20px; padding: 26px 28px; max-width: 620px; margin: 0 auto 32px; text-align: left; animation: fadeUp 0.8s ease-out 6.0s both; }
-  .thanks .tag { font-size: 14px; font-weight: 700; color: var(--accent); margin: 0 0 12px; }
-  .thanks p { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.8; }
+  .submitter-card { text-align: center; padding: 34px 28px; border: 1px solid var(--border); border-radius: 22px; background: linear-gradient(135deg, #fff 0%, #fdf5f9 100%); margin-bottom: 24px; }
+  .submitter-name { font-size: 32px; font-weight: 900; letter-spacing: -0.8px; margin: 6px 0 4px; background: linear-gradient(90deg, var(--accent), var(--coral)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .submitter-dept { font-size: 14px; color: var(--muted); margin: 0; }
 
-  /* ── PLEDGE ── */
-  .pledge-block { background: linear-gradient(135deg, var(--accentBg) 0%, #fff4e8 100%); border: 2px solid var(--accentBorder); border-radius: 24px; padding: 32px 30px; max-width: 640px; margin: 0 auto 32px; text-align: left; animation: fadeUp 0.8s ease-out 6.4s both; }
-  .pledge-block .pk { font-size: 11px; font-weight: 800; color: var(--gold); text-transform: uppercase; letter-spacing: 2.5px; margin: 0 0 10px; }
-  .pledge-block h3 { font-size: 22px; font-weight: 800; margin: 0 0 10px; letter-spacing: -0.4px; line-height: 1.25; }
-  .pledge-block .sub { font-size: 13px; color: var(--muted); line-height: 1.6; margin: 0 0 22px; }
-  .pledge-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-  .pledge-block input, .pledge-block textarea { background: white; border: 1px solid var(--inputBorder); border-radius: 10px; padding: 12px 14px; font-size: 14px; color: var(--text); outline: none; width: 100%; font-family: inherit; box-sizing: border-box; }
-  .pledge-block input:focus, .pledge-block textarea:focus { border-color: var(--accent); }
-  .pledge-block textarea { resize: vertical; min-height: 82px; line-height: 1.5; margin-bottom: 6px; }
-  .pledge-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
-  .char-count { font-size: 11px; color: var(--light); }
-  .pledge-btn { padding: 12px 26px; border-radius: 10px; border: none; background: var(--accent); color: white; font-size: 14px; font-weight: 800; cursor: pointer; font-family: inherit; }
-  .pledge-btn:disabled { background: #c8b8b0; cursor: not-allowed; }
-  .pledge-btn:hover:not(:disabled) { background: #6b2a3a; }
-  .pledge-done { background: white; border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; }
-  .pledge-done .check-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-  .pledge-done .check { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--green); color: white; font-size: 13px; font-weight: 900; }
-  .pledge-done .label { font-size: 12px; font-weight: 800; color: var(--green); text-transform: uppercase; letter-spacing: 1.5px; }
-  .pledge-done .quote { font-size: 13px; color: var(--text); line-height: 1.6; margin: 0 0 10px; font-style: italic; }
-  .pledge-done .byline { font-size: 12px; color: var(--light); margin: 0 0 12px; }
-  .edit-btn { background: none; border: 1px solid var(--inputBorder); color: var(--muted); font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-family: inherit; }
+  .rationale-card, .unifies-card { padding: 28px; border: 1px solid var(--border); border-radius: 22px; background: white; margin-bottom: 24px; }
+  .rationale-card h3, .unifies-card h3 { font-size: 12px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin: 0 0 14px; }
+  .rationale-card p, .unifies-card p { font-family: Georgia, serif; font-style: italic; font-size: 17px; line-height: 1.65; color: var(--text); margin: 0; }
+  .unifies-card { background: linear-gradient(135deg, #fef9ec 0%, #f6f0e4 100%); }
 
-  /* ── PLEDGE WALL ── */
-  .wall { max-width: 760px; margin: 0 auto; animation: fadeUp 0.8s ease-out 6.6s both; }
-  .wall-head { display: flex; align-items: center; justify-content: space-between; margin: 0 6px 14px; }
-  .wall-title { font-size: 12px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin: 0; }
-  .refresh-btn { background: none; border: none; color: var(--light); font-size: 11px; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; font-family: inherit; }
-  .refresh-btn:hover { color: var(--accent); }
-  .wall-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
-  .wall-tile { background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 14px; padding: 16px 18px; }
-  .wall-tile .wq { font-size: 13px; color: var(--text); line-height: 1.55; margin: 0 0 10px; font-style: italic; }
-  .wall-tile .wb { font-size: 11px; font-weight: 700; color: var(--muted); margin: 0; }
+  .big-name-wrap { text-align: center; padding: 56px 28px; margin: 32px 0; position: relative; }
+  .big-name-label { display: inline-block; font-size: 11px; font-weight: 800; color: var(--muted); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 18px; }
+  .big-name { font-size: 78px; font-weight: 900; letter-spacing: -3px; line-height: 1; margin: 0; background: linear-gradient(90deg, var(--coral) 0%, var(--accent) 35%, var(--lavender) 70%, var(--gold) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: bigPop 1.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes bigPop { 0% { opacity: 0; transform: scale(0.4); filter: blur(20px); } 50% { opacity: 1; transform: scale(1.08); filter: blur(0); } 100% { opacity: 1; transform: scale(1); } }
 
-  .footer { text-align: center; padding-top: 40px; font-size: 11px; color: var(--light); }
-  .footer em { font-style: italic; display: block; margin-bottom: 4px; color: var(--muted); font-size: 12px; }
+  .fw-layer { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+  .fw { position: absolute; width: 4px; height: 4px; }
+  .spark { position: absolute; width: 6px; height: 6px; border-radius: 50%; animation: sparkFly 1.6s ease-out forwards; opacity: 0; }
+  @keyframes sparkFly { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; } }
 
-  @media (max-width: 600px) {
-    .lock { padding: 40px 24px; }
-    .lock h1 { font-size: 24px; }
-    .pledge-inputs { grid-template-columns: 1fr; }
-    .submitter-card { padding: 22px 20px; }
-    .submitter-card .name { font-size: 24px; }
-    .detail-card { padding: 18px 20px; }
+  .thank-card { text-align: center; padding: 32px 28px; background: linear-gradient(135deg, var(--accentBg) 0%, #fff8ee 100%); border-radius: 22px; margin-bottom: 32px; }
+  .thank-card p { font-size: 16px; line-height: 1.65; color: var(--text); margin: 0 0 6px; }
+  .thank-card .sig { font-weight: 800; color: var(--accent); font-size: 14px; margin-top: 10px; }
+
+  /* ─── Pledge prompt ─── */
+  .pledge-card { padding: 34px 32px; border: 2px solid var(--accent); border-radius: 22px; background: white; margin-bottom: 24px; }
+  .pledge-card h2 { margin: 0 0 8px; font-size: 24px; background: linear-gradient(90deg, var(--accent), var(--coral)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .pledge-card .sub { color: var(--muted); font-size: 14px; margin: 0 0 22px; line-height: 1.55; }
+  .pledge-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .pledge-grid input, .pledge-form textarea { width: 100%; padding: 14px 16px; font-size: 14px; font-family: inherit; border: 2px solid var(--border); border-radius: 12px; background: #fbf6f1; }
+  .pledge-form textarea { min-height: 110px; resize: vertical; line-height: 1.5; margin-bottom: 6px; }
+  .pledge-grid input:focus, .pledge-form textarea:focus { outline: none; border-color: var(--accent); background: white; }
+  .counter { text-align: right; font-size: 12px; color: var(--muted); margin: 0 4px 14px; }
+  .pledge-btn { display: block; width: 100%; background: var(--accent); color: white; border: none; font-size: 15px; font-weight: 800; padding: 16px; border-radius: 14px; cursor: pointer; letter-spacing: 0.5px; transition: transform 0.2s; font-family: inherit; }
+  .pledge-btn:hover:not(:disabled) { transform: translateY(-2px); }
+  .pledge-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .pledge-done { text-align: center; padding: 24px; background: #e8f5e9; border: 2px solid #4caf50; border-radius: 16px; }
+  .pledge-done .quote { font-family: Georgia, serif; font-style: italic; font-size: 16px; color: var(--text); margin: 0 0 8px; }
+  .pledge-done .byline { font-size: 12px; color: #2e7d32; font-weight: 700; }
+  .pledge-done button { background: none; border: none; color: var(--accent); font-weight: 700; font-size: 13px; cursor: pointer; margin-top: 10px; text-decoration: underline; font-family: inherit; }
+
+  /* ─── Pledge wall ─── */
+  .wall-section { margin-top: 32px; }
+  .wall-section h2 { text-align: center; font-size: 22px; margin: 0 0 6px; }
+  .wall-section .wall-sub { text-align: center; color: var(--muted); font-size: 13px; margin: 0 0 22px; }
+  .wall-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+  .tile { padding: 18px 20px; border-radius: 16px; color: white; box-shadow: 0 10px 24px rgba(138, 53, 80, 0.12); }
+  .tile .tile-quote { font-family: Georgia, serif; font-style: italic; font-size: 14px; line-height: 1.5; margin: 0 0 12px; }
+  .tile .tile-byline { font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; opacity: 0.9; }
+
+  .footer { text-align: center; padding-top: 28px; margin-top: 32px; border-top: 1px solid var(--border); }
+  .footer p { margin: 0 0 4px; font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .footer .sig { font-weight: 800; color: var(--text); font-size: 14px; }
+
+  @media (max-width: 620px) {
+    .header h1 { font-size: 38px; }
+    .card { padding: 32px 24px; }
+    .big-name { font-size: 48px; letter-spacing: -1.5px; }
+    .pledge-grid { grid-template-columns: 1fr; }
+    .envelope .seal { width: 72px; height: 72px; font-size: 32px; }
   }
 </style>
 </head>
 <body>
-  <div class="page">
-    <div class="topbar">
-      <p class="kicker">Language Services · Advocate Health</p>
-      <p class="brand">The Unity Committee</p>
+<div class="page">
+  <div class="bg-orb orb1"></div>
+  <div class="bg-orb orb2"></div>
+  <div class="bg-orb orb3"></div>
+  <div class="confetti-bg" style="background:#d4489f; top:12%; left:8%; animation-delay:0s;"></div>
+  <div class="confetti-bg" style="background:#9b7bc7; top:18%; left:85%; border-radius:50%; animation-delay:0.8s;"></div>
+  <div class="confetti-bg" style="background:#d4a850; top:30%; left:14%; animation-delay:1.4s;"></div>
+  <div class="confetti-bg" style="background:#5fb8a8; top:40%; left:90%; border-radius:50%; animation-delay:2.1s;"></div>
+  <div class="confetti-bg" style="background:#e89a7e; top:60%; left:5%; animation-delay:2.8s;"></div>
+  <div class="confetti-bg" style="background:#8a3550; top:72%; left:88%; border-radius:50%; animation-delay:3.5s;"></div>
+
+  <div class="wrap">
+
+    <!-- ================= LOCK SCREEN ================= -->
+    <div id="lockScreen">
+      <div class="header">
+        <div class="date-badge">&#9993; Friday, May 1</div>
+        <h1>The Virtual Envelope</h1>
+        <p>After 56 submissions, a full team vote, and committee deliberation, we have a name. Enter the password to open the envelope.</p>
+      </div>
+
+      <div class="envelope-wrap">
+        <div class="envelope">
+          <div class="flap-top"></div>
+          <div class="flap-left"></div>
+          <div class="flap-right"></div>
+          <div class="seal">LS</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Open the envelope</h2>
+        <form class="pw-form" onsubmit="event.preventDefault(); tryUnlock();">
+          <label for="pwInput">Enter your password</label>
+          <input id="pwInput" type="text" autocomplete="off" placeholder="TYPE PASSWORD" />
+          <button type="submit">Unlock the reveal &rarr;</button>
+          <p class="pw-error" id="pwErr"></p>
+        </form>
+
+        <div class="hint-card">
+          <p class="hint-label">&#128161; Hint (in case you missed a clue)</p>
+          <p class="hint-text">Enter the word that connects one side to another and makes access possible where it once was not.</p>
+        </div>
+      </div>
     </div>
 
-    <!-- LOCK SCREEN -->
-    <div id="lockScreen" class="lock">
-      <div class="icon-wrap">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#8b3a4a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-        </svg>
+    <!-- ================= REVEAL SCREEN ================= -->
+    <div id="revealScreen">
+      <div class="header">
+        <div class="date-badge">&#127881; The Envelope Is Open</div>
+        <h1>The Reveal</h1>
       </div>
-      <h1>The Reveal</h1>
-      <p class="lead">This page is locked until the official reveal moment.</p>
-      <div class="hint-card">
-        <p class="hint-label">&#128161; Hint</p>
-        <p class="hint-text">Enter the word that connects one side to another and makes access possible where it once was not.</p>
-      </div>
-      <div class="input-row">
-        <input id="pwInput" type="password" placeholder="Enter password" autocomplete="off" />
-        <button onclick="tryUnlock()">Unlock</button>
-      </div>
-      <p class="err" id="pwErr"></p>
-    </div>
 
-    <!-- REVEAL SCREEN -->
-    <div id="revealScreen" class="reveal" style="display:none;">
-      <div class="fw-layer" id="fwLayer"></div>
-
-      <div class="confetti-row" id="confettiRow"></div>
-
-      <div class="stage">
-        <div class="intro">
-          <p class="eyebrow">The Envelope Please</p>
-          <p class="lead">After weeks of submissions, voting, and deliberation, the winning name was submitted by&hellip;</p>
+      <div class="card">
+        <div class="reveal-stage stage-1">
+          <div style="text-align:center;">
+            <div class="eyebrow">Submitted By</div>
+          </div>
+          <div class="submitter-card">
+            <p class="submitter-name" id="submitterName">TBD</p>
+            <p class="submitter-dept" id="submitterDept"></p>
+          </div>
         </div>
 
-        <div class="submitter-card">
-          <p class="tag">Submitted By</p>
-          <p class="name" id="submitterName">&nbsp;</p>
-          <p class="dept" id="submitterDept">&nbsp;</p>
+        <div class="reveal-stage stage-2">
+          <div style="text-align:center;"><div class="eyebrow">Meaning &amp; Rationale</div></div>
+          <div class="rationale-card">
+            <h3>Why this name</h3>
+            <p id="rationaleBody">TBD</p>
+          </div>
         </div>
 
-        <div class="detail-card rationale">
-          <p class="tag">Meaning &amp; Rationale</p>
-          <p class="body" id="rationaleBody">&nbsp;</p>
+        <div class="reveal-stage stage-3">
+          <div style="text-align:center;"><div class="eyebrow">How It Unifies Us</div></div>
+          <div class="unifies-card">
+            <h3>One team, one name</h3>
+            <p id="unifiesBody">TBD</p>
+          </div>
         </div>
 
-        <div class="detail-card unifies">
-          <p class="tag">How It Unifies</p>
-          <p class="body" id="unifiesBody">&nbsp;</p>
+        <div class="reveal-stage stage-4 big-name-wrap">
+          <div class="fw-layer" id="fwLayer"></div>
+          <div class="big-name-label">And the winning name is</div>
+          <h2 class="big-name" id="bigName">TBD</h2>
         </div>
 
-        <p class="big-label">And the new name is&hellip;</p>
-        <h1 class="big-name" id="bigName">&nbsp;</h1>
-
-        <div class="thanks">
-          <p class="tag">Thank you to everyone who participated!</p>
-          <p>This name represents our unified vision for Language Services at Advocate Health. It was chosen through a process that valued every voice, from initial submissions to team voting to committee deliberation.</p>
+        <div class="reveal-stage stage-5">
+          <div class="thank-card">
+            <p>Thank you to everyone who submitted a name, voted, and shaped this process.</p>
+            <p>Every voice mattered. Every idea counted.</p>
+            <p class="sig">&mdash; The Unity Committee</p>
+          </div>
         </div>
 
-        <!-- PLEDGE PROMPT -->
-        <div class="pledge-block">
-          <p class="pk">Your Turn</p>
-          <h3>How will you use the new name in the next 24 hours?</h3>
-          <p class="sub">A small commitment from each of us. Tell us one concrete way you will put this name to work tomorrow: in an email signature, in a huddle, on a sign, in a conversation with a patient, anywhere.</p>
+        <div class="reveal-stage stage-6">
+          <div class="pledge-card">
+            <h2>Your pledge</h2>
+            <p class="sub">How will you use the new name in the next 24 hours? Share your commitment with the team.</p>
 
-          <div id="pledgeForm">
-            <div class="pledge-inputs">
-              <input id="pName" type="text" placeholder="Your name" />
-              <input id="pDept" type="text" placeholder="Department (optional)" />
-            </div>
-            <textarea id="pText" placeholder="In the next 24 hours, I will..." maxlength="280" oninput="updateCount()"></textarea>
-            <div class="pledge-bar">
-              <span class="char-count" id="pCount">0/280</span>
+            <div id="pledgeForm">
+              <div class="pledge-grid">
+                <input id="pName" type="text" placeholder="Your name" maxlength="40" />
+                <input id="pDept" type="text" placeholder="Department (optional)" maxlength="40" />
+              </div>
+              <textarea id="pText" placeholder="In the next 24 hours I will..." maxlength="280" oninput="updateCount()"></textarea>
+              <p class="counter"><span id="pCount">0/280</span></p>
               <button class="pledge-btn" id="pBtn" onclick="submitPledge()" disabled>Share my pledge</button>
             </div>
-          </div>
 
-          <div id="pledgeDone" class="pledge-done" style="display:none;">
-            <div class="check-row">
-              <span class="check">&#10003;</span>
-              <span class="label">Pledge shared</span>
+            <div id="pledgeDone" class="pledge-done" style="display:none;">
+              <p class="quote" id="doneQuote"></p>
+              <p class="byline" id="doneByline"></p>
+              <button onclick="editPledge()">Edit my pledge</button>
             </div>
-            <p class="quote" id="doneQuote">&nbsp;</p>
-            <p class="byline" id="doneByline">&nbsp;</p>
-            <button class="edit-btn" onclick="editPledge()">Edit my pledge</button>
           </div>
-        </div>
 
-        <!-- PLEDGE WALL -->
-        <div class="wall" id="wall" style="display:none;">
-          <div class="wall-head">
-            <p class="wall-title" id="wallTitle">The Pledge Wall</p>
-            <button class="refresh-btn" onclick="loadPledges()">Refresh</button>
+          <div class="wall-section" id="wall" style="display:none;">
+            <h2 id="wallTitle">The Pledge Wall</h2>
+            <p class="wall-sub">Every commitment from the team, shared live.</p>
+            <div class="wall-grid" id="wallGrid"></div>
           </div>
-          <div class="wall-grid" id="wallGrid"></div>
+
+          <div class="footer">
+            <p>The Unity Committee</p>
+            <p class="sig">Language Services &middot; Advocate Health</p>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="footer">
-      <em>At the desired time. In the optimal place. Through appropriate modalities. At no cost.</em>
-      Advocate Health · Unity Committee
-    </div>
   </div>
+</div>
 
 <script>
 /* ─────────── CONFIG (edit before you deploy) ─────────── */
 const CONFIG = {
   password: "BRIDGE",
-
-  /* The winning name and the submitter details. Edit these after committee decision. */
   winningName: "TBD",
   submitterName: "TBD",
   submitterDepartment: "",
   meaningRationale: "TBD. Replace this with the winning submitter's rationale text.",
   howItUnifies: "TBD. Replace this with how the submitter said the name unifies the team.",
 
-  /* JSONBin shared pledge wall. Open create_bin.html once to provision the bin, then paste the ID here. */
+  /* JSONBin shared pledge wall. Open create_bin.html once to provision, then paste the ID here. */
   jsonbinApiKey: "$2a$10$M6W9ulyMKcxTdIcDcjhuVOm12ccNO2UeYG9e581pkl4mA3aX5Dvu.",
   pledgesBin: "REPLACE_WITH_PLEDGES_BIN_ID"
 };
@@ -270,10 +288,10 @@ const CONFIG = {
 
 const PLEDGE_KEY = "ls_reveal_my_pledge";
 const JB_READY = CONFIG.pledgesBin && !CONFIG.pledgesBin.startsWith("REPLACE_");
-const JB_HEADERS = { "Content-Type": "application/json", "X-Master-Key": CONFIG.jsonbinApiKey, "X-Bin-Meta": "false" };
 const JB_URL = "https://api.jsonbin.io/v3/b/" + CONFIG.pledgesBin;
-
-const COLORS = ["#d4489f", "#9b7bc7", "#5fb8a8", "#e89a7e", "#d4a850", "#d86fa1", "#8b3a4a"];
+const JB_WRITE_HEADERS = { "Content-Type": "application/json", "X-Access-Key": CONFIG.jsonbinApiKey };
+const JB_READ_HEADERS = { "X-Access-Key": CONFIG.jsonbinApiKey, "X-Bin-Meta": "false" };
+const COLORS = ["#d4489f", "#9b7bc7", "#5fb8a8", "#e89a7e", "#d4a850", "#8a3550", "#c94974"];
 
 function tryUnlock() {
   const val = document.getElementById("pwInput").value.trim().toUpperCase();
@@ -282,8 +300,9 @@ function tryUnlock() {
     document.getElementById("revealScreen").style.display = "block";
     document.getElementById("pwErr").textContent = "";
     initReveal();
+    window.scrollTo({ top: 0, behavior: "smooth" });
   } else {
-    document.getElementById("pwErr").textContent = "Incorrect password. Please try again.";
+    document.getElementById("pwErr").textContent = "Incorrect password. Check the hint and try again.";
   }
 }
 document.getElementById("pwInput").addEventListener("keydown", (e) => { if (e.key === "Enter") tryUnlock(); });
@@ -294,10 +313,8 @@ function initReveal() {
   document.getElementById("rationaleBody").textContent = CONFIG.meaningRationale || "";
   document.getElementById("unifiesBody").textContent = CONFIG.howItUnifies || "";
   document.getElementById("bigName").textContent = CONFIG.winningName || "TBD";
-  buildFireworks();
-  buildConfetti();
+  setTimeout(buildFireworks, 5800);
 
-  /* restore my pledge */
   try {
     const saved = localStorage.getItem(PLEDGE_KEY);
     if (saved) {
@@ -317,14 +334,13 @@ function initReveal() {
 
 function buildFireworks() {
   const layer = document.getElementById("fwLayer");
+  if (!layer) return;
   const positions = [
-    { left: "12%", top: "4%",  delay: 0 },
-    { left: "82%", top: "6%",  delay: 0.4 },
-    { left: "50%", top: "14%", delay: 0.8 },
-    { left: "22%", top: "22%", delay: 1.2 },
-    { left: "78%", top: "26%", delay: 1.6 },
-    { left: "8%",  top: "40%", delay: 2.0 },
-    { left: "92%", top: "44%", delay: 2.4 }
+    { left: "12%", top: "10%", delay: 0 },
+    { left: "82%", top: "14%", delay: 0.3 },
+    { left: "50%", top: "5%",  delay: 0.6 },
+    { left: "22%", top: "70%", delay: 0.9 },
+    { left: "78%", top: "75%", delay: 1.2 }
   ];
   positions.forEach((fw, fi) => {
     const node = document.createElement("div");
@@ -333,33 +349,18 @@ function buildFireworks() {
     node.style.top = fw.top;
     for (let i = 0; i < 16; i++) {
       const angle = (i / 16) * Math.PI * 2;
-      const dist = 60 + (fi % 3) * 15;
+      const dist = 70 + (fi % 3) * 15;
       const s = document.createElement("div");
       s.className = "spark";
       const color = COLORS[(i + fi) % COLORS.length];
       s.style.background = color;
-      s.style.boxShadow = "0 0 8px " + color;
+      s.style.boxShadow = "0 0 10px " + color;
       s.style.setProperty("--tx", Math.cos(angle) * dist + "px");
       s.style.setProperty("--ty", Math.sin(angle) * dist + "px");
       s.style.animationDelay = fw.delay + "s";
       node.appendChild(s);
     }
     layer.appendChild(node);
-  });
-}
-
-function buildConfetti() {
-  const row = document.getElementById("confettiRow");
-  COLORS.forEach((color, i) => {
-    const d = document.createElement("div");
-    d.className = "confetti-dot";
-    d.style.background = color;
-    d.style.borderRadius = i % 2 === 0 ? "50%" : "2px";
-    d.style.left = (6 + i * 12) + "%";
-    d.style.top = (10 + (i % 3) * 10) + "px";
-    d.style.animation = (i % 2 === 0 ? "cf1" : "cf2") + " " + (1.5 + i * 0.2) + "s ease-out infinite";
-    d.style.animationDelay = (i * 0.15) + "s";
-    row.appendChild(d);
   });
 }
 
@@ -388,20 +389,16 @@ async function submitPledge() {
 
   if (JB_READY) {
     try {
-      /* Read current list, upsert by name (case-insensitive), write back. */
-      const current = await fetchPledges();
+      const current = await fetchPledgesRaw();
       const key = newPledge.name.trim().toLowerCase();
-      const filtered = current.filter(p => (p.name || "").trim().toLowerCase() !== key);
+      const filtered = current.filter(p => p && !p._seed && (p.name || "").trim().toLowerCase() !== key);
       filtered.unshift(newPledge);
       const res = await fetch(JB_URL, {
         method: "PUT",
-        headers: JB_HEADERS,
+        headers: JB_WRITE_HEADERS,
         body: JSON.stringify(filtered)
       });
-      if (!res.ok) {
-        const errText = await res.text();
-        console.error("JSONBin write failed:", res.status, errText);
-      }
+      if (!res.ok) console.error("JSONBin write failed:", res.status, await res.text());
       await loadPledges();
     } catch (e) { console.error(e); }
   }
@@ -421,21 +418,20 @@ function editPledge() {
   document.getElementById("pledgeDone").style.display = "none";
 }
 
-async function fetchPledges() {
+async function fetchPledgesRaw() {
   if (!JB_READY) return [];
   try {
-    const res = await fetch(JB_URL + "/latest", { headers: { "X-Master-Key": CONFIG.jsonbinApiKey, "X-Bin-Meta": "false" } });
+    const res = await fetch(JB_URL + "/latest", { headers: JB_READ_HEADERS });
     if (!res.ok) return [];
     const data = await res.json();
-    const arr = Array.isArray(data) ? data : [];
-    return arr.filter(p => p && !p._seed && p.name);
+    return Array.isArray(data) ? data : [];
   } catch (e) { return []; }
 }
 
 async function loadPledges() {
   if (!JB_READY) return;
-  const list = await fetchPledges();
-  /* Newest first as written. */
+  const raw = await fetchPledgesRaw();
+  const list = raw.filter(p => p && !p._seed && p.name);
   renderWall(list);
 }
 
@@ -445,19 +441,20 @@ function renderWall(list) {
   const title = document.getElementById("wallTitle");
   if (!list || list.length === 0) { wall.style.display = "none"; return; }
   wall.style.display = "block";
-  title.textContent = "The Pledge Wall · " + list.length + " " + (list.length === 1 ? "commitment" : "commitments");
+  title.textContent = "The Pledge Wall · " + list.length + (list.length === 1 ? " voice" : " voices");
   grid.innerHTML = "";
   list.forEach((p, i) => {
     const tile = document.createElement("div");
-    tile.className = "wall-tile";
-    tile.style.borderLeftColor = COLORS[i % COLORS.length];
+    tile.className = "tile";
+    tile.style.background = COLORS[i % COLORS.length];
     const q = document.createElement("p");
-    q.className = "wq";
+    q.className = "tile-quote";
     q.textContent = '"' + (p.pledge || "") + '"';
     const b = document.createElement("p");
-    b.className = "wb";
+    b.className = "tile-byline";
     b.textContent = (p.name || "") + (p.department ? " · " + p.department : "");
-    tile.appendChild(q); tile.appendChild(b);
+    tile.appendChild(q);
+    tile.appendChild(b);
     grid.appendChild(tile);
   });
 }

@@ -4,34 +4,67 @@
 <meta charset="UTF-8">
 <title>Create Pledges Bin · Language Services Reveal</title>
 <style>
-  body { font-family: -apple-system, system-ui, sans-serif; max-width: 640px; margin: 60px auto; padding: 20px; background: #f9f5ee; color: #2a2a2a; }
-  h1 { color: #4a1d3a; }
-  .card { background: white; padding: 32px; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+  body { font-family: -apple-system, system-ui, sans-serif; max-width: 680px; margin: 40px auto; padding: 20px; background: #f9f5ee; color: #2a2a2a; }
+  h1 { color: #4a1d3a; margin-bottom: 8px; }
+  .sub { color: #6b5d56; margin-top: 0; }
+  .card { background: white; padding: 32px; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); margin-bottom: 20px; }
+  .card h2 { color: #4a1d3a; margin-top: 0; font-size: 20px; }
   button { background: #4a1d3a; color: white; border: none; padding: 14px 28px; font-size: 16px; border-radius: 10px; cursor: pointer; font-weight: 600; }
   button:hover { background: #6b2a55; }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
+  input[type=password], input[type=text] { width: 100%; padding: 12px; border: 2px solid #e0d7c8; border-radius: 8px; font-family: monospace; font-size: 14px; box-sizing: border-box; margin: 8px 0 16px; }
+  input:focus { outline: none; border-color: #4a1d3a; }
+  label { font-weight: 600; color: #4a1d3a; font-size: 14px; }
   .result { margin-top: 24px; padding: 20px; border-radius: 10px; display: none; }
   .ok { background: #e8f5e9; border: 2px solid #4caf50; }
   .err { background: #ffebee; border: 2px solid #c62828; }
-  code { background: #f4f0e8; padding: 4px 8px; border-radius: 4px; font-size: 15px; word-break: break-all; }
-  .big-id { font-size: 22px; font-weight: 700; color: #4a1d3a; display: block; margin: 12px 0; padding: 14px; background: #fff8e7; border-radius: 8px; text-align: center; letter-spacing: 0.5px; }
-  ol { line-height: 1.8; }
+  code { background: #f4f0e8; padding: 4px 8px; border-radius: 4px; font-size: 14px; word-break: break-all; }
+  .big-id { font-size: 22px; font-weight: 700; color: #4a1d3a; display: block; margin: 12px 0; padding: 14px; background: #fff8e7; border-radius: 8px; text-align: center; letter-spacing: 0.5px; user-select: all; }
+  ol, ul { line-height: 1.8; }
+  .hint { font-size: 13px; color: #6b5d56; margin-top: -10px; margin-bottom: 16px; }
+  a { color: #4a1d3a; }
 </style>
 </head>
 <body>
+
+<h1>Create the pledges bin</h1>
+<p class="sub">You have two options. Pick whichever is faster.</p>
+
 <div class="card">
-  <h1>Create the pledges bin</h1>
-  <p>Click the button below once. It creates a public JSONBin to hold the pledge wall entries, then shows you the bin ID to paste into <code>index.html</code>.</p>
+  <h2>Option A · One-click (needs JSONBin Master Key)</h2>
+  <p>Grab your Master Key from <a href="https://jsonbin.io/api-keys" target="_blank">jsonbin.io/api-keys</a>, paste it below, and click the button. This provisions the bin and prints the ID.</p>
+  <label for="mk">JSONBin Master Key</label>
+  <input id="mk" type="password" value="$2a$10$IEvmIsn0vDlhf/9ujl73ouc9z1EdYj3odFgY8I6O0E4Ad7TQVusQe">
+  <div class="hint">Pre-filled. Click the button to create the bin.</div>
   <button id="goBtn" onclick="createBin()">Create pledges bin</button>
   <div id="result" class="result"></div>
 </div>
 
-<script>
-const API_KEY = "$2a$10$M6W9ulyMKcxTdIcDcjhuVOm12ccNO2UeYG9e581pkl4mA3aX5Dvu.";
+<div class="card">
+  <h2>Option B · Manual (30 seconds, no key needed)</h2>
+  <ol>
+    <li>Go to <a href="https://jsonbin.io/app/bins" target="_blank">jsonbin.io/app/bins</a> and sign in.</li>
+    <li>Click <strong>Create Bin</strong>.</li>
+    <li>Paste this into the editor:
+      <pre style="background:#f4f0e8;padding:12px;border-radius:8px;">[{"_seed": true}]</pre>
+    </li>
+    <li>Set <strong>Private</strong> to <strong>OFF</strong> (so the reveal page can read it without an access key).</li>
+    <li>Click <strong>Create</strong>. The URL will look like <code>jsonbin.io/app/bins/abc123...</code> &mdash; the part after <code>/bins/</code> is your bin ID.</li>
+    <li>Paste that ID into <code>index.html</code> where it says <code>REPLACE_WITH_PLEDGES_BIN_ID</code>.</li>
+  </ol>
+</div>
 
+<script>
 async function createBin() {
+  const key = document.getElementById("mk").value.trim();
   const btn = document.getElementById("goBtn");
   const out = document.getElementById("result");
+  if (!key) {
+    out.className = "result err";
+    out.style.display = "block";
+    out.innerHTML = "<strong>Please paste your Master Key above.</strong>";
+    return;
+  }
   btn.disabled = true;
   btn.textContent = "Creating...";
   try {
@@ -39,7 +72,7 @@ async function createBin() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Master-Key": API_KEY,
+        "X-Master-Key": key,
         "X-Bin-Name": "ls_pledges_wall",
         "X-Bin-Private": "false"
       },
@@ -51,18 +84,19 @@ async function createBin() {
     out.className = "result ok";
     out.style.display = "block";
     out.innerHTML = '<h3 style="margin-top:0;color:#2e7d32">Success!</h3>' +
-      '<p>Your pledges bin ID is:</p>' +
+      '<p>Your pledges bin ID (click to select):</p>' +
       '<span class="big-id">' + id + '</span>' +
       '<p><strong>Next:</strong></p><ol>' +
       '<li>Open <code>index.html</code> in a text editor</li>' +
-      '<li>Find the line <code>pledgesBin: "REPLACE_WITH_PLEDGES_BIN_ID"</code></li>' +
-      '<li>Replace it with <code>pledgesBin: "' + id + '"</code></li>' +
+      '<li>Find <code>pledgesBin: "REPLACE_WITH_PLEDGES_BIN_ID"</code></li>' +
+      '<li>Replace with <code>pledgesBin: "' + id + '"</code></li>' +
+      '<li>Also update <code>jsonbinApiKey</code> with your Access Key (from jsonbin.io/api-keys), since the current one in index.html may be an access key for the committee portal bins only.</li>' +
       '<li>Save, push to GitHub, deploy.</li></ol>';
     btn.textContent = "Bin created";
   } catch (e) {
     out.className = "result err";
     out.style.display = "block";
-    out.innerHTML = '<h3 style="margin-top:0;color:#c62828">Failed</h3><pre>' + e.message + '</pre>';
+    out.innerHTML = '<h3 style="margin-top:0;color:#c62828">Failed</h3><pre style="white-space:pre-wrap;">' + e.message + '</pre>';
     btn.disabled = false;
     btn.textContent = "Try again";
   }
