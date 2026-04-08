@@ -271,20 +271,34 @@
 </div>
 
 <script>
-/* ─────────── CONFIG (edit before you deploy) ─────────── */
+/* ─────────── CONFIG ─────────── */
 const CONFIG = {
   password: "BRIDGE",
-  winningName: "TBD",
-  submitterName: "TBD",
-  submitterDepartment: "",
-  meaningRationale: "TBD. Replace this with the winning submitter's rationale text.",
-  howItUnifies: "TBD. Replace this with how the submitter said the name unifies the team.",
 
-  /* JSONBin shared pledge wall. Open create_bin.html once to provision, then paste the ID here. */
+  /* JSONBin access key (reused from committee portal) */
   jsonbinApiKey: "$2a$10$M6W9ulyMKcxTdIcDcjhuVOm12ccNO2UeYG9e581pkl4mA3aX5Dvu.",
+
+  /* Committee portal data. Reveal auto-computes the winner from the team vote. */
+  submissionsBin: "69ae1210ae596e708f6e5f1e",
+  votesBin: "69ae121e43b1c97be9c29727",
+
+  /* Optional committee override. If set, this exact proposedName (case insensitive)
+     wins instead of the top team vote. Leave empty to use the top-ranked name. */
+  committeeOverride: "",
+
+  /* Pledge wall bin. Provision once via create_bin.html, paste the ID here. */
   pledgesBin: "REPLACE_WITH_PLEDGES_BIN_ID"
 };
 /* ─────────── END CONFIG ─────────── */
+
+/* Winner gets populated from the bins on reveal. */
+let WINNER = {
+  winningName: "Loading...",
+  submitterName: "",
+  submitterDepartment: "",
+  meaningRationale: "",
+  howItUnifies: ""
+};
 
 const PLEDGE_KEY = "ls_reveal_my_pledge";
 const JB_READY = CONFIG.pledgesBin && !CONFIG.pledgesBin.startsWith("REPLACE_");
@@ -293,26 +307,105 @@ const JB_WRITE_HEADERS = { "Content-Type": "application/json", "X-Access-Key": C
 const JB_READ_HEADERS = { "X-Access-Key": CONFIG.jsonbinApiKey, "X-Bin-Meta": "false" };
 const COLORS = ["#d4489f", "#9b7bc7", "#5fb8a8", "#e89a7e", "#d4a850", "#8a3550", "#c94974"];
 
-function tryUnlock() {
+async function tryUnlock() {
   const val = document.getElementById("pwInput").value.trim().toUpperCase();
-  if (val === CONFIG.password.toUpperCase()) {
-    document.getElementById("lockScreen").style.display = "none";
-    document.getElementById("revealScreen").style.display = "block";
-    document.getElementById("pwErr").textContent = "";
-    initReveal();
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  } else {
+  if (val !== CONFIG.password.toUpperCase()) {
     document.getElementById("pwErr").textContent = "Incorrect password. Check the hint and try again.";
+    return;
   }
+  const btn = document.querySelector(".pw-form button");
+  if (btn) { btn.disabled = true; btn.textContent = "Opening the envelope..."; }
+  document.getElementById("pwErr").textContent = "";
+
+  /* Fetch the winner from committee portal bins BEFORE showing the reveal */
+  try { await computeWinner(); }
+  catch (e) { console.error("Winner fetch failed:", e); }
+
+  document.getElementById("lockScreen").style.display = "none";
+  document.getElementById("revealScreen").style.display = "block";
+  initReveal();
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 document.getElementById("pwInput").addEventListener("keydown", (e) => { if (e.key === "Enter") tryUnlock(); });
 
+async function computeWinner() {
+  const headers = { "X-Access-Key": CONFIG.jsonbinApiKey, "X-Bin-Meta": "false" };
+  const subUrl = "https://api.jsonbin.io/v3/b/" + CONFIG.submissionsBin + "/latest";
+  const votesUrl = "https://api.jsonbin.io/v3/b/" + CONFIG.votesBin + "/latest";
+  const [subRes, voteRes] = await Promise.all([
+    fetch(subUrl, { headers }),
+    fetch(votesUrl, { headers })
+  ]);
+  const submissions = subRes.ok ? await subRes.json() : [];
+  const votes = voteRes.ok ? await voteRes.json() : [];
+  const subArr = Array.isArray(submissions) ? submissions : [];
+  const voteArr = Array.isArray(votes) ? votes : [];
+
+  /* Build ranking map keyed by lowercased proposedName */
+  const nameMap = new Map();
+  for (const s of subArr) {
+    if (!s || s._init || !s.proposedName) continue;
+    const key = s.proposedName.trim().toLowerCase();
+    if (!nameMap.has(key)) {
+      nameMap.set(key, {
+        name: s.proposedName,
+        submitter: s.fullName || "Anonymous",
+        department: s.department || "",
+        rationale: s.rationale || "",
+        unification: s.unification || "",
+        firstPickVotes: 0,
+        secondPickVotes: 0,
+        totalPoints: 0
+      });
+    }
+  }
+  for (const v of voteArr) {
+    if (!v || v._init) continue;
+    const p1 = (v.pick1 || "").trim().toLowerCase();
+    const p2 = (v.pick2 || "").trim().toLowerCase();
+    if (p1 && nameMap.has(p1)) {
+      const e = nameMap.get(p1); e.firstPickVotes++; e.totalPoints += 2;
+    }
+    if (p2 && nameMap.has(p2)) {
+      const e = nameMap.get(p2); e.secondPickVotes++; e.totalPoints += 1;
+    }
+  }
+
+  /* Pick winner: committee override if set, else top ranked */
+  let pick = null;
+  if (CONFIG.committeeOverride) {
+    pick = nameMap.get(CONFIG.committeeOverride.trim().toLowerCase()) || null;
+  }
+  if (!pick) {
+    const ranked = Array.from(nameMap.values()).sort((a, b) => {
+      if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+      if (b.firstPickVotes !== a.firstPickVotes) return b.firstPickVotes - a.firstPickVotes;
+      return a.name.localeCompare(b.name);
+    });
+    pick = ranked[0] || null;
+  }
+
+  if (pick) {
+    WINNER.winningName = pick.name;
+    WINNER.submitterName = pick.submitter;
+    WINNER.submitterDepartment = pick.department;
+    WINNER.meaningRationale = pick.rationale || "The submitter's rationale is on file.";
+    WINNER.howItUnifies = pick.unification || "The submitter's unification statement is on file.";
+  } else {
+    WINNER.winningName = "TBD";
+    WINNER.submitterName = "Awaiting committee decision";
+    WINNER.submitterDepartment = "";
+    WINNER.meaningRationale = "The committee has not yet published the winning name.";
+    WINNER.howItUnifies = "Check back after May 1 at the reveal.";
+  }
+}
+
 function initReveal() {
-  document.getElementById("submitterName").textContent = CONFIG.submitterName || "TBD";
-  document.getElementById("submitterDept").textContent = CONFIG.submitterDepartment || "";
-  document.getElementById("rationaleBody").textContent = CONFIG.meaningRationale || "";
-  document.getElementById("unifiesBody").textContent = CONFIG.howItUnifies || "";
-  document.getElementById("bigName").textContent = CONFIG.winningName || "TBD";
+  document.getElementById("submitterName").textContent = WINNER.submitterName || "TBD";
+  document.getElementById("submitterDept").textContent = WINNER.submitterDepartment || "";
+  document.getElementById("rationaleBody").textContent = WINNER.meaningRationale || "";
+  document.getElementById("unifiesBody").textContent = WINNER.howItUnifies || "";
+  document.getElementById("bigName").textContent = WINNER.winningName || "TBD";
   setTimeout(buildFireworks, 5800);
 
   try {
