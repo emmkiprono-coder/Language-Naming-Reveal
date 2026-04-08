@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Create Pledges Bin · Language Services Reveal</title>
+<style>
+  body { font-family: -apple-system, system-ui, sans-serif; max-width: 640px; margin: 60px auto; padding: 20px; background: #f9f5ee; color: #2a2a2a; }
+  h1 { color: #4a1d3a; }
+  .card { background: white; padding: 32px; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+  button { background: #4a1d3a; color: white; border: none; padding: 14px 28px; font-size: 16px; border-radius: 10px; cursor: pointer; font-weight: 600; }
+  button:hover { background: #6b2a55; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .result { margin-top: 24px; padding: 20px; border-radius: 10px; display: none; }
+  .ok { background: #e8f5e9; border: 2px solid #4caf50; }
+  .err { background: #ffebee; border: 2px solid #c62828; }
+  code { background: #f4f0e8; padding: 4px 8px; border-radius: 4px; font-size: 15px; word-break: break-all; }
+  .big-id { font-size: 22px; font-weight: 700; color: #4a1d3a; display: block; margin: 12px 0; padding: 14px; background: #fff8e7; border-radius: 8px; text-align: center; letter-spacing: 0.5px; }
+  ol { line-height: 1.8; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Create the pledges bin</h1>
+  <p>Click the button below once. It creates a public JSONBin to hold the pledge wall entries, then shows you the bin ID to paste into <code>index.html</code>.</p>
+  <button id="goBtn" onclick="createBin()">Create pledges bin</button>
+  <div id="result" class="result"></div>
+</div>
+
+<script>
+const API_KEY = "$2a$10$M6W9ulyMKcxTdIcDcjhuVOm12ccNO2UeYG9e581pkl4mA3aX5Dvu.";
+
+async function createBin() {
+  const btn = document.getElementById("goBtn");
+  const out = document.getElementById("result");
+  btn.disabled = true;
+  btn.textContent = "Creating...";
+  try {
+    const res = await fetch("https://api.jsonbin.io/v3/b", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Master-Key": API_KEY,
+        "X-Bin-Name": "ls_pledges_wall",
+        "X-Bin-Private": "false"
+      },
+      body: JSON.stringify([{ _seed: true, name: "", department: "", pledge: "", submittedAt: new Date().toISOString() }])
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(JSON.stringify(data));
+    const id = data.metadata && data.metadata.id;
+    out.className = "result ok";
+    out.style.display = "block";
+    out.innerHTML = '<h3 style="margin-top:0;color:#2e7d32">Success!</h3>' +
+      '<p>Your pledges bin ID is:</p>' +
+      '<span class="big-id">' + id + '</span>' +
+      '<p><strong>Next:</strong></p><ol>' +
+      '<li>Open <code>index.html</code> in a text editor</li>' +
+      '<li>Find the line <code>pledgesBin: "REPLACE_WITH_PLEDGES_BIN_ID"</code></li>' +
+      '<li>Replace it with <code>pledgesBin: "' + id + '"</code></li>' +
+      '<li>Save, push to GitHub, deploy.</li></ol>';
+    btn.textContent = "Bin created";
+  } catch (e) {
+    out.className = "result err";
+    out.style.display = "block";
+    out.innerHTML = '<h3 style="margin-top:0;color:#c62828">Failed</h3><pre>' + e.message + '</pre>';
+    btn.disabled = false;
+    btn.textContent = "Try again";
+  }
+}
+</script>
+</body>
+</html>
