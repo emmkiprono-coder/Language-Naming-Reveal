@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Create Winner Bin · Language Services</title>
+<style>
+  body { font-family: -apple-system, system-ui, sans-serif; max-width: 640px; margin: 60px auto; padding: 20px; background: #fbf7f3; color: #2a1f1a; }
+  h1 { color: #8a3550; }
+  .card { background: white; padding: 32px; border-radius: 18px; box-shadow: 0 20px 60px rgba(138,53,80,0.12); border: 1px solid #ecd9c9; }
+  button { background: #8a3550; color: white; border: none; padding: 16px 32px; font-size: 16px; border-radius: 12px; cursor: pointer; font-weight: 700; }
+  button:hover { background: #6f2a42; }
+  button:disabled { opacity: 0.5; }
+  .result { margin-top: 24px; padding: 20px; border-radius: 12px; display: none; }
+  .ok { background: #e8f5e9; border: 2px solid #4caf50; }
+  .err { background: #ffebee; border: 2px solid #c62828; }
+  code { background: #fbf6f1; padding: 4px 8px; border-radius: 4px; font-size: 14px; }
+  .big-id { font-size: 22px; font-weight: 900; color: #8a3550; display: block; margin: 14px 0; padding: 16px; background: #fff8e7; border-radius: 10px; text-align: center; user-select: all; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Create the Winner Bin</h1>
+  <p>This one-time click provisions the JSONBin that stores the committee's Final Decision. After it's created, open <code>publish_winner.html</code> to publish the winning name.</p>
+  <button id="goBtn" onclick="createBin()">Create winner bin</button>
+  <div id="result" class="result"></div>
+</div>
+
+<script>
+const MASTER_KEY = "$2a$10$IEvmIsn0vDlhf/9ujl73ouc9z1EdYj3odFgY8I6O0E4Ad7TQVusQe";
+
+async function createBin() {
+  const btn = document.getElementById("goBtn");
+  const out = document.getElementById("result");
+  btn.disabled = true; btn.textContent = "Creating...";
+  try {
+    const seed = { published: false, winningName: "", rationale: "", publishedAt: "" };
+    const res = await fetch("https://api.jsonbin.io/v3/b", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Master-Key": MASTER_KEY,
+        "X-Bin-Name": "ls_winner_bin",
+        "X-Bin-Private": "false"
+      },
+      body: JSON.stringify(seed)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(JSON.stringify(data));
+    const id = data.metadata && data.metadata.id;
+    out.className = "result ok";
+    out.style.display = "block";
+    out.innerHTML = '<h3 style="margin-top:0;color:#2e7d32">Success!</h3>' +
+      '<p>Winner bin ID (click to select):</p>' +
+      '<span class="big-id">' + id + '</span>' +
+      '<p><strong>Next:</strong> send this ID back to Claude or paste it into the CONFIG block of <code>index.html</code> and <code>publish_winner.html</code> where it says <code>REPLACE_WITH_WINNER_BIN_ID</code>.</p>';
+    btn.textContent = "Winner bin created";
+  } catch (e) {
+    out.className = "result err";
+    out.style.display = "block";
+    out.innerHTML = '<h3 style="margin-top:0;color:#c62828">Failed</h3><pre>' + e.message + '</pre>';
+    btn.disabled = false; btn.textContent = "Try again";
+  }
+}
+</script>
+</body>
+</html>

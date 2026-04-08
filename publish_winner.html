@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Publish Winner · Committee Admin · Language Services</title>
+<style>
+  :root { --accent: #8a3550; --border: #ecd9c9; --bg: #fbf7f3; }
+  body { font-family: -apple-system, system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 20px; background: var(--bg); color: #2a1f1a; }
+  h1 { color: var(--accent); margin-bottom: 6px; }
+  .sub { color: #6b5a52; margin-top: 0; }
+  .card { background: white; padding: 32px; border-radius: 18px; box-shadow: 0 20px 60px rgba(138,53,80,0.12); border: 1px solid var(--border); margin-bottom: 20px; }
+  label { display: block; font-size: 12px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; margin: 16px 0 6px; }
+  input, select, textarea { width: 100%; padding: 14px 16px; font-size: 15px; font-family: inherit; border: 2px solid var(--border); border-radius: 10px; background: #fbf6f1; box-sizing: border-box; }
+  textarea { min-height: 100px; line-height: 1.5; resize: vertical; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); background: white; }
+  button { background: var(--accent); color: white; border: none; padding: 16px 32px; font-size: 15px; font-weight: 800; border-radius: 12px; cursor: pointer; margin-top: 20px; width: 100%; }
+  button:hover:not(:disabled) { background: #6f2a42; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .result { margin-top: 20px; padding: 18px; border-radius: 10px; display: none; }
+  .ok { background: #e8f5e9; border: 2px solid #4caf50; }
+  .err { background: #ffebee; border: 2px solid #c62828; }
+  .current { background: #fff8e7; border: 1px dashed #d4a850; border-radius: 10px; padding: 16px 18px; margin-bottom: 20px; }
+  .current .lbl { font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; margin: 0 0 6px; }
+  .current .name { font-size: 22px; font-weight: 900; margin: 0; }
+  .current .meta { font-size: 12px; color: #6b5a52; margin: 4px 0 0; }
+  .small { font-size: 12px; color: #6b5a52; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<h1>Publish the Winner</h1>
+<p class="sub">Committee admin tool. Once the committee agrees on the Final Decision, fill this in and click Publish. The reveal page will pick it up instantly.</p>
+
+<div class="card">
+  <div id="currentBox" class="current" style="display:none;">
+    <p class="lbl">Currently Published</p>
+    <p class="name" id="curName"></p>
+    <p class="meta" id="curMeta"></p>
+  </div>
+
+  <label for="binId">Winner Bin ID</label>
+  <input id="binId" type="text" placeholder="24-character hex string from create_winner_bin.html" />
+  <p class="small">Saved to this browser after first entry.</p>
+
+  <label for="winner">Pick the winning name</label>
+  <select id="winner"><option value="">Loading submissions...</option></select>
+  <p class="small" id="picker-help">Pulled live from the Submissions bin. The rationale and unification text below come from the original submission.</p>
+
+  <label for="rationale">Committee rationale (optional override)</label>
+  <textarea id="rationale" placeholder="Leave blank to use the submitter's original rationale"></textarea>
+
+  <label for="note">Committee note (optional, shown on reveal)</label>
+  <textarea id="note" placeholder="A short note from the committee about why this name was chosen"></textarea>
+
+  <button id="publishBtn" onclick="publish()" disabled>Publish winner</button>
+  <div id="result" class="result"></div>
+</div>
+
+<script>
+const API_KEY = "$2a$10$M6W9ulyMKcxTdIcDcjhuVOm12ccNO2UeYG9e581pkl4mA3aX5Dvu.";
+const SUBMISSIONS_BIN = "69ae1210ae596e708f6e5f1e";
+const LS_KEY = "ls_winner_bin_id";
+
+let SUBMISSIONS = [];
+
+function getBinId() { return document.getElementById("binId").value.trim(); }
+function saveBinId(id) { try { localStorage.setItem(LS_KEY, id); } catch (e) {} }
+
+async function loadSubmissions() {
+  const sel = document.getElementById("winner");
+  try {
+    const res = await fetch("https://api.jsonbin.io/v3/b/" + SUBMISSIONS_BIN + "/latest", {
+      headers: { "X-Access-Key": API_KEY, "X-Bin-Meta": "false" }
+    });
+    const data = await res.json();
+    const arr = Array.isArray(data) ? data : [];
+    SUBMISSIONS = arr.filter(s => s && !s._init && s.proposedName);
+    const uniq = new Map();
+    SUBMISSIONS.forEach(s => {
+      const key = s.proposedName.trim().toLowerCase();
+      if (!uniq.has(key)) uniq.set(key, s);
+    });
+    const opts = ['<option value="">-- select winning name --</option>'];
+    Array.from(uniq.values())
+      .sort((a, b) => a.proposedName.localeCompare(b.proposedName))
+      .forEach(s => {
+        const lbl = s.proposedName + " · " + (s.fullName || "Anonymous");
+        opts.push('<option value="' + escapeAttr(s.proposedName) + '">' + escapeHtml(lbl) + '</option>');
+      });
+    sel.innerHTML = opts.join("");
+    document.getElementById("publishBtn").disabled = false;
+  } catch (e) {
+    sel.innerHTML = '<option value="">Failed to load submissions</option>';
+    document.getElementById("picker-help").textContent = "Error loading submissions: " + e.message;
+  }
+}
+
+async function loadCurrent() {
+  const id = getBinId();
+  if (!id) return;
+  try {
+    const res = await fetch("https://api.jsonbin.io/v3/b/" + id + "/latest", {
+      headers: { "X-Access-Key": API_KEY, "X-Bin-Meta": "false" }
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data && data.published && data.winningName) {
+      document.getElementById("currentBox").style.display = "block";
+      document.getElementById("curName").textContent = data.winningName;
+      const when = data.publishedAt ? new Date(data.publishedAt).toLocaleString() : "";
+      document.getElementById("curMeta").textContent = "Published " + when;
+    }
+  } catch (e) {}
+}
+
+async function publish() {
+  const id = getBinId();
+  if (!id) { alert("Please enter the Winner Bin ID first."); return; }
+  const name = document.getElementById("winner").value;
+  if (!name) { alert("Please pick a winning name."); return; }
+  saveBinId(id);
+
+  const sub = SUBMISSIONS.find(s => s.proposedName.trim().toLowerCase() === name.trim().toLowerCase());
+  const rationaleOverride = document.getElementById("rationale").value.trim();
+  const note = document.getElementById("note").value.trim();
+
+  const payload = {
+    published: true,
+    winningName: sub ? sub.proposedName : name,
+    submitterName: sub ? (sub.fullName || "Anonymous") : "",
+    submitterDepartment: sub ? (sub.department || "") : "",
+    meaningRationale: rationaleOverride || (sub ? (sub.rationale || "") : ""),
+    howItUnifies: sub ? (sub.unification || "") : "",
+    committeeNote: note,
+    publishedAt: new Date().toISOString()
+  };
+
+  const btn = document.getElementById("publishBtn");
+  btn.disabled = true; btn.textContent = "Publishing...";
+  const out = document.getElementById("result");
+  try {
+    const res = await fetch("https://api.jsonbin.io/v3/b/" + id, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "X-Access-Key": API_KEY },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error(res.status + " " + (await res.text()));
+    out.className = "result ok";
+    out.style.display = "block";
+    out.innerHTML = '<h3 style="margin-top:0;color:#2e7d32">Published!</h3><p>The reveal page will now show <strong>' + escapeHtml(payload.winningName) + '</strong>.</p>';
+    loadCurrent();
+  } catch (e) {
+    out.className = "result err";
+    out.style.display = "block";
+    out.innerHTML = '<h3 style="margin-top:0;color:#c62828">Failed</h3><pre>' + escapeHtml(e.message) + '</pre>';
+  } finally {
+    btn.disabled = false; btn.textContent = "Publish winner";
+  }
+}
+
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function escapeAttr(s) { return escapeHtml(s); }
+
+try {
+  const saved = localStorage.getItem(LS_KEY);
+  if (saved) { document.getElementById("binId").value = saved; }
+} catch (e) {}
+document.getElementById("binId").addEventListener("change", loadCurrent);
+loadSubmissions();
+loadCurrent();
+</script>
+</body>
+</html>

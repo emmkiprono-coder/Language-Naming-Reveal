@@ -278,13 +278,19 @@ const CONFIG = {
   /* JSONBin access key (reused from committee portal) */
   jsonbinApiKey: "$2a$10$M6W9ulyMKcxTdIcDcjhuVOm12ccNO2UeYG9e581pkl4mA3aX5Dvu.",
 
-  /* Committee portal data. Reveal auto-computes the winner from the team vote. */
+  /* Committee portal data. */
   submissionsBin: "69ae1210ae596e708f6e5f1e",
   votesBin: "69ae121e43b1c97be9c29727",
 
-  /* Optional committee override. If set, this exact proposedName (case insensitive)
-     wins instead of the top team vote. Leave empty to use the top-ranked name. */
-  committeeOverride: "",
+  /* Committee Final Decision. The reveal looks up this exact proposedName
+     in the submissions bin and pulls the submitter, department, rationale,
+     and unification automatically. Case insensitive. Leave empty to fall
+     back to the top team vote. */
+  committeeOverride: "Language Access and Interpreting Services",
+
+  /* Optional winner bin (used by publish_winner.html if you prefer a live
+     admin tool instead of hardcoding committeeOverride). */
+  winnerBin: "REPLACE_WITH_WINNER_BIN_ID",
 
   /* Pledge wall bin. Provision once via create_bin.html, paste the ID here. */
   pledgesBin: "REPLACE_WITH_PLEDGES_BIN_ID"
@@ -330,6 +336,57 @@ document.getElementById("pwInput").addEventListener("keydown", (e) => { if (e.ke
 
 async function computeWinner() {
   const headers = { "X-Access-Key": CONFIG.jsonbinApiKey, "X-Bin-Meta": "false" };
+
+  /* STEP 1: Check the Winner bin first. If the committee published, use it. */
+  if (CONFIG.winnerBin && !CONFIG.winnerBin.startsWith("REPLACE_")) {
+    try {
+      const wRes = await fetch("https://api.jsonbin.io/v3/b/" + CONFIG.winnerBin + "/latest", { headers });
+      if (wRes.ok) {
+        const wData = await wRes.json();
+        if (wData && wData.published && wData.winningName) {
+          WINNER.winningName = wData.winningName;
+          WINNER.submitterName = wData.submitterName || "";
+          WINNER.submitterDepartment = wData.submitterDepartment || "";
+          WINNER.meaningRationale = wData.meaningRationale || "";
+          WINNER.howItUnifies = wData.howItUnifies || "";
+          if (wData.committeeNote) {
+            WINNER.howItUnifies = WINNER.howItUnifies + (WINNER.howItUnifies ? "\n\n" : "") + wData.committeeNote;
+          }
+          return;
+        }
+      }
+    } catch (e) { console.warn("Winner bin read failed, falling back:", e); }
+  }
+
+  /* STEP 2: Committee override. Look up the chosen name in submissions. */
+  if (CONFIG.committeeOverride && CONFIG.committeeOverride.trim()) {
+    try {
+      const sRes = await fetch("https://api.jsonbin.io/v3/b/" + CONFIG.submissionsBin + "/latest", { headers });
+      if (sRes.ok) {
+        const sData = await sRes.json();
+        const arr = Array.isArray(sData) ? sData : [];
+        const target = CONFIG.committeeOverride.trim().toLowerCase();
+        const match = arr.find(s => s && !s._init && s.proposedName && s.proposedName.trim().toLowerCase() === target);
+        if (match) {
+          WINNER.winningName = match.proposedName;
+          WINNER.submitterName = match.fullName || "Anonymous";
+          WINNER.submitterDepartment = match.department || "";
+          WINNER.meaningRationale = match.rationale || "The submitter's rationale is on file with the committee.";
+          WINNER.howItUnifies = match.unification || "The submitter's unification statement is on file with the committee.";
+          return;
+        }
+        /* Name not found in submissions. Use the override verbatim with placeholder copy. */
+        WINNER.winningName = CONFIG.committeeOverride;
+        WINNER.submitterName = "The Unity Committee";
+        WINNER.submitterDepartment = "Language Services";
+        WINNER.meaningRationale = "After 56 submissions and full team deliberation, the committee selected this name for its clarity, scope, and honest reflection of the team's work.";
+        WINNER.howItUnifies = "One name that honors the full breadth of what the team does, every day, in every encounter.";
+        return;
+      }
+    } catch (e) { console.warn("Override lookup failed, falling back:", e); }
+  }
+
+  /* STEP 3: Final fallback. Compute top team vote from submissions + votes bins. */
   const subUrl = "https://api.jsonbin.io/v3/b/" + CONFIG.submissionsBin + "/latest";
   const votesUrl = "https://api.jsonbin.io/v3/b/" + CONFIG.votesBin + "/latest";
   const [subRes, voteRes] = await Promise.all([
