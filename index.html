@@ -57,9 +57,17 @@
   .pw-form button:hover { transform: translateY(-2px); }
   .pw-error { color: #c62828; font-size: 13px; text-align: center; min-height: 18px; margin: 0; font-weight: 600; }
 
-  .hint-card { background: linear-gradient(135deg, #fff8ee 0%, #fbeaf1 100%); border: 1px dashed #e8c3b0; border-radius: 18px; padding: 22px 24px; margin: 0 0 8px; }
+  .hint-toggle-btn { display: inline-flex; align-items: center; gap: 8px; background: rgba(212, 168, 80, 0.14); border: 1px dashed rgba(212, 168, 80, 0.7); color: #8a6a1c; font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; padding: 12px 22px; border-radius: 999px; cursor: pointer; transition: all 0.25s; font-family: inherit; margin: 6px auto 0; }
+  .hint-toggle-btn:hover { background: rgba(212, 168, 80, 0.22); transform: translateY(-1px); }
+  .hint-toggle-wrap { text-align: center; margin-top: 10px; }
+  .hint-card { background: linear-gradient(135deg, #fff8ee 0%, #fbeaf1 100%); border: 1px dashed #e8c3b0; border-radius: 18px; padding: 22px 24px; margin: 14px 0 8px; display: none; position: relative; overflow: hidden; }
+  .hint-card.shown { display: block; animation: hintPop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes hintPop { 0% { opacity: 0; transform: scale(0.9) translateY(-8px); } 60% { opacity: 1; transform: scale(1.02); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
   .hint-card .hint-label { font-size: 11px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin: 0 0 8px; }
   .hint-card .hint-text { font-family: Georgia, serif; font-style: italic; font-size: 16px; line-height: 1.55; color: var(--text); margin: 0; }
+  .hint-flash { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at center, rgba(212, 168, 80, 0.55) 0%, transparent 60%); opacity: 0; }
+  .hint-flash.active { animation: hintFlash 0.9s ease-out; }
+  @keyframes hintFlash { 0% { opacity: 0; transform: scale(0.6); } 30% { opacity: 1; } 100% { opacity: 0; transform: scale(1.4); } }
 
   /* ─── Reveal screen ─── */
   #revealScreen { display: none; }
@@ -176,9 +184,18 @@
           <p class="pw-error" id="pwErr"></p>
         </form>
 
-        <div class="hint-card">
-          <p class="hint-label">&#128161; Hint (in case you missed a clue)</p>
-          <p class="hint-text">Enter the word that connects one side to another and makes access possible where it once was not.</p>
+        <div class="hint-toggle-wrap">
+          <button type="button" class="hint-toggle-btn" id="hintBtn" onclick="revealHint()">
+            <span>&#128161;</span>
+            <span>Need a hint? Click here</span>
+          </button>
+        </div>
+
+        <div class="hint-card" id="hintCard">
+          <div class="hint-flash" id="hintFlash"></div>
+          <p class="hint-label">&#128273; Your Password</p>
+          <p class="hint-text" style="font-family: 'SF Mono', Monaco, Menlo, monospace; font-style: normal; font-size: 28px; font-weight: 900; letter-spacing: 6px; color: var(--accent); text-align: center; margin: 6px 0 4px;">BRIDGE</p>
+          <p style="font-size: 12px; color: var(--muted); text-align: center; margin: 6px 0 0;">Case does not matter. Type it above and unlock the envelope.</p>
         </div>
       </div>
     </div>
@@ -333,6 +350,16 @@ async function tryUnlock() {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 document.getElementById("pwInput").addEventListener("keydown", (e) => { if (e.key === "Enter") tryUnlock(); });
+
+function revealHint() {
+  const card = document.getElementById("hintCard");
+  const btn = document.getElementById("hintBtn");
+  const flash = document.getElementById("hintFlash");
+  card.classList.add("shown");
+  btn.style.display = "none";
+  flash.classList.add("active");
+  setTimeout(() => flash.classList.remove("active"), 900);
+}
 
 async function computeWinner() {
   const headers = { "X-Access-Key": CONFIG.jsonbinApiKey, "X-Bin-Meta": "false" };
